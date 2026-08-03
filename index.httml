@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GuitarCP – Guitar Practice Tool</title>
+    <style>
+        :root {
+            --primary: #f97316;
+            --bg: #f3f4f6;
+            --card: #ffffff;
+            --text: #1f2937;
+            --muted: #6b7280;
+            --border: #d1d5db;
+            --strum: #dbeafe;
+            --strum-text: #1e40af;
+            --finger: #dcfce7;
+            --finger-text: #166534;
+            --arpeggio: #f3e8ff;
+            --arpeggio-text: #7e22ce;
+            --other: #fef3c7;
+            --other-text: #92400e;
+        }
+        .dark {
+            --bg: #18181b;
+            --card: #27272a;
+            --text: #f8fafc;
+            --muted: #9ca3af;
+            --border: #3f3f46;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
+        body { background: var(--bg); color: var(--text); transition: 0.2s; min-height: 100vh; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 1rem; }
+        header { position: sticky; top: 0; background: rgba(255,255,255,0.9); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); z-index: 50; padding: 0.75rem 0; }
+        .dark header { background: rgba(39,39,42,0.9); }
+        .header-inner { display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 1.4rem; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 0.5rem; }
+        .btn { padding: 0.5rem 1rem; border: none; border-radius: 0.5rem; cursor: pointer; font-size: 0.9rem; transition: 0.15s; }
+        .btn:hover { opacity: 0.9; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-gray { background: var(--border); color: var(--text); }
+        .btn-sm { padding: 0.3rem 0.5rem; font-size: 0.8rem; }
+        .btn-icon { background: transparent; padding: 0.5rem; font-size: 1.1rem; }
+        .tabs { display: flex; gap: 0.25rem; border-bottom: 1px solid var(--border); margin: 1.5rem 0; flex-wrap: wrap; }
+        .tab { padding: 0.75rem 1rem; background: transparent; border: none; border-bottom: 2px solid transparent; cursor: pointer; font-weight: 500; color: var(--muted); }
+        .tab.active { border-color: var(--primary); color: var(--primary); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .card { background: var(--card); border-radius: 0.75rem; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 1.5rem; }
+        .grid-form { display: grid; gap: 1rem; grid-template-columns: 1fr; }
+        @media (min-width: 768px) { .grid-form { grid-template-columns: repeat(4, 1fr); } }
+        .col-2 { grid-column: span 1; }
+        @media (min-width: 768px) { .col-2 { grid-column: span 2; } }
+        label { display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.25rem; }
+        input, select { width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg); color: var(--text); font-size: 0.95rem; }
+        .table-wrap { overflow-x: auto; border-radius: 0.75rem; }
+        table { width: 100%; background: var(--card); border-collapse: collapse; }
+        th, td { padding: 1rem; text-align: left; border-bottom: 1px solid var(--border); }
+        th { background: var(--bg); font-weight: 600; position: sticky; top: 0; }
+        .chord-tag { display: inline-block; padding: 0.15rem 0.5rem; background: var(--border); border-radius: 0.375rem; font-size: 0.8rem; margin: 0.1rem; cursor: pointer; }
+        .chord-tag:hover { background: var(--primary); color: white; }
+        .style-tag { padding: 0.25rem 0.5rem; border-radius: 0.375rem; font-size: 0.75rem; font-weight: 500; }
+        .style-strum { background: var(--strum); color: var(--strum-text); }
+        .style-finger { background: var(--finger); color: var(--finger-text); }
+        .style-arpeggio { background: var(--arpeggio); color: var(--arpeggio-text); }
+        .style-other { background: var(--other); color: var(--other-text); }
+        .chord-sequence { display: flex; flex-wrap: wrap; gap: 0.75rem; margin: 1rem 0; }
+        .chord-item { padding: 0.5rem 1rem; border: 1px solid var(--border); border-radius: 0.5rem; cursor: pointer; background: var(--bg); position: relative; }
+        .chord-item.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .strum-count { position: absolute; top: -8px; right: -8px; background: #16a34a; color: white; border-radius: 50%; width: 20px; height: 20px; font-size: 0.7rem; display: flex; align-items: center; justify-content: center; opacity: 0; transition: 0.1s; }
+        .chord-item.active .strum-count { opacity: 1; }
+        .bpm-controls { display: flex; flex-direction: column; gap: 1rem; align-items: center; }
+        @media (min-width: 768px) { .bpm-controls { flex-direction: row; } }
+        .bpm-buttons { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+        .bpm-buttons .btn { padding: 0.4rem 0.8rem; font-size: 0.85rem; }
+        .diagram-holder { display: flex; justify-content: center; padding: 2rem 0; min-height: 200px; align-items: center; }
+        .chord-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 1rem; }
+        .chord-card { background: var(--card); padding: 1rem; border-radius: 0.75rem; text-align: center; }
+        footer { text-align: center; padding: 2rem 1rem; font-size: 0.875rem; color: var(--muted); margin-top: 3rem; }
+        .hidden { display: none !important; }
+        .small-note { font-size: 0.8rem; color: var(--muted); margin-top: 0.25rem; }
+        .copy-notice { margin-left: 0.5rem; color: #16a34a; font-size: 0.8rem; opacity: 0; transition: 0.2s; }
+        .copy-notice.show { opacity: 1; }
+    </style>
+</head>
+<body>
+<header>
+    <div class="container header-inner">
+        <div class="logo">
+            <span>🎸</span> GuitarCP
+        </div>
+        <div style="display:flex;gap:0.5rem;">
+            <button id="themeBtn" class="btn btn-icon" title="Toggle theme">🌙</button>
+        </div>
+    </div>
+</header>
+
+<main class="container">
+    <div class="tabs">
+        <button class="tab active" data-tab="browser">🎵 Song Browser</button>
+        <button class="tab" data-tab="practice">▶️ Practice</button>
+        <button class="tab" data-tab="chords">📚 Chord Library</button>
+    </div>
+
+    <!-- Song Browser -->
+    <section id="browser" class="tab-content active">
+        <div class="card">
+            <div class="grid-form">
+                <div class="col-2">
+                    <label>Search</label>
+                    <input type="text" id="searchInput" placeholder="Title, artist or chord...">
+                </div>
+                <div>
+                    <label>Technique</label>
+                    <select id="techFilter">
+                        <option value="all">All Styles</option>
+                        <option>Strum</option>
+                        <option>Fingerstyle</option>
+                        <option>Arpeggio</option>
+                        <option>Reggae</option>
+                        <option>Country</option>
+                        <option>Pop Groove</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Sort</label>
+                    <select id="sortBy">
+                        <option value="az">Title A-Z</option>
+                        <option value="za">Title Z-A</option>
+                        <option value="bpmLow">BPM Low-High</option>
+                        <option value="bpmHigh">BPM High-Low</option>
+                        <option value="chords">Fewest Chords</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th>Title</th><th>Artist</th><th class="hide-md">Chords</th><th>Style</th><th>BPM</th><th>Actions</th></tr>
+                </thead>
+                <tbody id="songTableBody"><tr><td colspan="6" style="text-align:center;padding:2rem;">Loading songs...</td></tr></tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Practice -->
+    <section id="practice" class="tab-content">
+        <div class="card">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
+                <div>
+                    <h2 id="songName">Select a song to practice</h2>
+                    <p id="songArtist" style="color:var(--muted);margin-bottom:1rem;"></p>
+                </div>
+                <div>
+                    <button id="copyChordsBtn" class="btn btn-gray btn-sm">📋 Copy Chords</button>
+                    <span id="copyNotice" class="copy-notice">Copied!</span>
+                </div>
+            </div>
+            
+            <div style="display:flex;align-items:center;gap:1rem;margin-bottom:0.5rem;flex-wrap:wrap;">
+                <h3 style="font-size:1rem;">Chord Sequence:</h3>
+                <label style="display:flex;align-items:center;gap:0.3rem;font-size:0.9rem;">
+                    <input type="number" id="strumsPerChord" min="1" max="16" value="4" style="width:50px;">
+                    strums per chord
+                </label>
+            </div>
+            <div id="chordSequence" class="chord-sequence"></div>
+
+            <div id="diagramArea" class="diagram-holder">
+                <p style="color:var(--muted);">Choose a song to view chords</p>
+            </div>
+
+            <div class="card" style="background:var(--bg);margin:1.5rem 0;">
+                <div class="bpm-controls">
+                    <div style="flex:1;width:100%;">
+                        <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;">
+                            <span>Tempo: <span id="bpmValue">80</span> BPM</span>
+                            <span style="font-size:0.875rem;color:var(--muted);">Tap: <button id="tapBtn" style="background:none;border:none;color:var(--primary);text-decoration:underline;cursor:pointer;">Tap here</button></span>
+                        </div>
+                        <input type="range" id="bpmSlider" min="40" max="180" value="80" style="width:100%;">
+                        <div class="bpm-buttons">
+                            <button class="btn btn-gray" id="bpm-5">-5</button>
+                            <button class="btn btn-gray" id="bpm-1">-1</button>
+                            <button class="btn btn-gray" id="bpm+1">+1</button>
+                            <button class="btn btn-gray" id="bpm+5">+5</button>
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:0.75rem;">
+                        <button class="btn btn-primary" id="startBtn">▶️ Start</button>
+                        <button class="btn btn-gray hidden" id="stopBtn">⏹️ Stop</button>
+                    </div>
+                </div>
+                <div style="margin-top:1rem;display:flex;gap:1rem;flex-wrap:wrap;">
+                    <label style="display:flex;align-items:center;gap:0.5rem;"><input type="checkbox" id="clickCheck"> Play click</label>
+                    <label style="display:flex;align-items:center;gap:0.5rem;"><input type="checkbox" id="guitarCheck" checked> Play chord sound</label>
+                    <label style="display:flex;align-items:center;gap:0.5rem;"><input type="checkbox" id="loopCheck" checked> Loop chords</label>
+                </div>
+                <p class="small-note">💡 First click Start to activate audio on all devices</p>
+            </div>
+
+            <div class="card" style="background:var(--bg);">
+                <h3 style="font-size:1rem;margin-bottom:0.5rem;">Strumming Pattern:</h3>
+                <p id="patternText" style="font-size:1.2rem;font-weight:500;letter-spacing:2px;"></p>
+                <p id="patternDesc" style="font-size:0.875rem;color:var(--muted);margin-top:0.25rem;"></p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Chord Library -->
+    <section id="chords" class="tab-content">
+        <input type="text" id="chordSearch" placeholder="Search chord name..." style="max-width:400px;margin-bottom:1.5rem;">
+        <div id="chordLibrary" class="chord-grid"></div>
+    </section>
+</main>
+
+<footer>GuitarCP – Simple standalone guitar practice tool</footer>
+
+<script>
+// ALL DATA & LOGIC BAKED IN — NO OUTSIDE DEPENDENCIES
+const songs = [
+    { title: "Wonderwall", artist: "Oasis", chords: ["Em7", "G", "Dsus4", "A7sus4"], pattern: "D DU UDU", bpm: 87, type: "Strum" },
+    { title: "Knockin’ on Heaven’s Door", artist: "Bob Dylan", chords: ["G", "D", "Am", "C"], pattern: "D DUD DUD", bpm: 72, type: "Strum" },
+    { title: "Horse With No Name", artist: "America", chords: ["Em", "D6add9/F#"], pattern: "D DU UDU", bpm: 68, type: "Strum" },
+    { title: "Brown Eyed Girl", artist: "Van Morrison", chords: ["G", "C", "D", "Em"], pattern: "D DU UDU", bpm: 98, type: "Strum" },
+    { title: "Stand By Me", artist: "Ben E. King", chords: ["G", "Em", "C", "D"], pattern: "D DU UDU", bpm: 60, type: "Strum" },
+    { title: "Zombie", artist: "The Cranberries", chords: ["Em", "C", "G", "D"], pattern: "DDDD", bpm: 82, type: "Strum" },
+    { title: "Perfect", artist: "Ed Sheeran", chords: ["G", "Em", "C", "D"], pattern: "D DU UDU", bpm: 63, type: "Strum" },
+    { title: "Riptide", artist: "Vance Joy", chords: ["Am", "G", "C"], pattern: "DU DU DU", bpm: 100, type: "Strum" },
+    { title: "Tennessee Whiskey", artist: "Chris Stapleton", chords: ["A", "Bm", "D", "E"], pattern: "D DU UDU", bpm: 48, type: "Strum" },
+    { title: "Hallelujah", artist: "Leonard Cohen", chords: ["C", "Am", "F", "G"], pattern: "D DU UDU", bpm: 56, type: "Strum" },
+    { title: "Free Fallin’", artist: "Tom Petty", chords: ["D", "G", "A"], pattern: "D DU UDU", bpm: 84, type: "Strum" },
+    { title: "Chasing Cars", artist: "Snow Patrol", chords: ["A", "E", "D"], pattern: "DDDD", bpm: 84, type: "Strum" },
+    { title: "Let It Be", artist: "The Beatles", chords: ["C", "G", "Am", "F"], pattern: "D DU UDU", bpm: 72, type: "Strum" },
+    { title: "I’m Yours", artist: "Jason Mraz", chords: ["G", "D", "Em", "C"], pattern: "D DU UDU", bpm: 76, type: "Strum" },
+    { title: "All of Me", artist: "John Legend", chords: ["Em", "C", "G", "D"], pattern: "D DU UDU", bpm: 63, type: "Strum" },
+    { title: "Take Me Home, Country Roads", artist: "John Denver", chords: ["G", "Em", "D", "C"], pattern: "D DU UDU", bpm: 84, type: "Strum" },
+    { title: "Hey There Delilah", artist: "Plain White T’s", chords: ["D", "F#m", "Bm", "G", "A"], pattern: "Fingerstyle", bpm: 100, type: "Fingerstyle" },
+    { title: "Blackbird", artist: "The Beatles", chords: ["G", "Am", "C", "D"], pattern: "Fingerstyle", bpm: 92, type: "Fingerstyle" },
+    { title: "Wish You Were Here", artist: "Pink Floyd", chords: ["G", "C", "D", "Am", "Em"], pattern: "D DU UDU", bpm: 60, type: "Strum" },
+    { title: "Hotel California", artist: "Eagles", chords: ["Bm", "F#", "A", "E", "G", "D", "Em"], pattern: "D DU UDU", bpm: 74, type: "Strum" },
+    { title: "Stairway to Heaven", artist: "Led Zeppelin", chords: ["Am", "C", "D", "F", "G"], pattern: "Fingerstyle", bpm: 82, type: "Fingerstyle" },
+    { title: "Nothing Else Matters", artist: "Metallica", chords: ["Em", "D", "C", "G", "B7"], pattern: "Fingerstyle", bpm: 52, type: "Fingerstyle" },
+    { title: "House of the Rising Sun", artist: "The Animals", chords: ["Am", "C", "D", "F", "E"], pattern: "Arpeggio", bpm: 84, type: "Arpeggio" },
+    { title: "Mad World", artist: "Gary Jules", chords: ["Em", "G", "D", "A"], pattern: "D DU UDU", bpm: 75, type: "Strum" },
+    { title: "The Scientist", artist: "Coldplay", chords: ["D", "Bm", "G", "A"], pattern: "D DU UDU", bpm: 72, type: "Strum" },
+    { title: "Fix You", artist: "Coldplay", chords: ["C", "Em", "Am", "G", "F", "Gsus4"], pattern: "D DU UDU", bpm: 60, type: "Strum" },
+    { title: "Love of My Life", artist: "Queen", chords: ["G", "Em", "Am", "D", "C", "G7", "Fmaj7", "F", "Dm"], pattern: "Fingerstyle", bpm: 72, type: "Fingerstyle" },
+    { title: "Still in Love with You", artist: "Thin Lizzy", chords: ["Am", "Dm", "G", "C", "F", "E"], pattern: "D DU UDU", bpm: 68, type: "Strum" },
+    { title: "Wonderful Tonight", artist: "Eric Clapton", chords: ["G", "D", "C", "Em", "Am"], pattern: "D DU UDU", bpm: 64, type: "Strum" },
+    { title: "Hey Jude", artist: "The Beatles", chords: ["F", "C", "Bb"], pattern: "D DU UDU", bpm: 72, type: "Strum" },
+    { title: "Yellow", artist: "Coldplay", chords: ["G", "D", "C", "Em"], pattern: "D DU UDU", bpm: 88, type: "Strum" },
+    { title: "Thinking Out Loud", artist: "Ed Sheeran", chords: ["D", "Bm", "G", "A"], pattern: "D DU UDU", bpm: 79, type: "Strum" },
+    { title: "Shape of You", artist: "Ed Sheeran", chords: ["Am", "F", "C", "G"], pattern: "Pop Groove", bpm: 96, type: "Pop Groove" },
+    { title: "Shallow", artist: "Lady Gaga", chords: ["Em", "G", "D", "C"], pattern: "D DU UDU", bpm: 96, type: "Strum" },
+    { title: "Someone Like You", artist: "Adele", chords: ["A", "E", "F#m", "D"], pattern: "Arpeggio", bpm: 68, type: "Arpeggio" },
+    { title: "Hurt", artist: "Johnny Cash", chords: ["Am", "C", "D", "G"], pattern: "D DU UDU", bpm: 72, type: "Strum" },
+    { title: "Jolene", artist: "Dolly Parton", chords: ["Am", "C", "G"], pattern: "D DU UDU", bpm: 110, type: "Strum" },
+    { title: "Ring of Fire", artist: "Johnny Cash", chords: ["G", "C", "D"], pattern: "Country", bpm: 100, type: "Country" },
+    { title: "Blowin’ in the Wind", artist: "Bob Dylan", chords: ["G", "C", "D"], pattern: "D DU UDU", bpm: 72, type: "Strum" },
+    { title: "Wild World", artist: "Cat Stevens", chords: ["Am", "D", "G", "C", "F"], pattern: "D DU UDU", bpm: 72, type: "Strum" },
+    { title: "Have You Ever Seen the Rain", artist: "CCR", chords: ["C", "G", "Am", "F"], pattern: "D DU UDU", bpm: 116, type: "Strum" },
+    { title: "Bad Moon Rising", artist: "CCR", chords: ["D", "A", "G"], pattern: "D DU UDU", bpm: 90, type: "Strum" },
+    { title: "Sweet Home Alabama", artist: "Lynyrd Skynyrd", chords: ["D", "C", "G"], pattern: "D DU UDU", bpm: 98, type: "Strum" },
+    { title: "Time of Your Life", artist: "Green Day", chords: ["G", "C", "D", "Em"], pattern: "D DU UDU", bpm: 72, type: "Strum" },
+    { title: "Patience", artist: "Guns N’ Roses", chords: ["C", "G", "A", "D"], pattern: "Arpeggio", bpm: 60, type: "Arpeggio" },
+    { title: "Tears in Heaven", artist: "Eric Clapton", chords: ["A", "E", "F#m", "D"], pattern: "Fingerstyle", bpm: 74, type: "Fingerstyle" },
+    { title: "More Than Words", artist: "Extreme", chords: ["G", "C", "D", "Em", "Am"], pattern: "Fingerstyle", bpm: 92, type: "Fingerstyle" },
+    { title: "Fast Car", artist: "Tracy Chapman", chords: ["C", "G", "Em", "D"], pattern: "D DU UDU", bpm: 96, type: "Strum" },
+    { title: "No Woman No Cry", artist: "Bob Marley", chords: ["C", "G", "Am", "F"], pattern: "Reggae", bpm: 78, type: "Reggae" }
+];
+
+// Chord frequencies for realistic guitar sound
+const chordNotes = {
+    'C': [261.63, 329.63, 392.00, 523.25],
+    'D': [146.83, 220.00, 293.66, 369.99],
+    'E': [164.81, 207.65, 246.94, 329.63],
+    'F': [174.61, 220.00, 261.63, 349.23],
+    'G': [196.00, 246.94, 293.66, 392.00],
+    'A': [220.00, 277.18, 329.63, 440.00],
+    'B': [246.94, 311.13, 369.99, 493.88],
+    'Am': [220.00, 261.63, 329.63, 440.00],
+    'Dm': [146.83, 220.00, 261.63, 369.99],
+    'Em': [164.81, 196.00, 246.94, 329.63],
+    'Bm': [246.94, 293.66, 369.99, 493.88],
+    'F#m': [185.00, 233.08, 293.66, 392.00],
+    'E7': [164.81, 207.65, 246.94, 392.00],
+    'B7': [246.94, 293.66, 369.99, 466.16],
+    'Em7': [164.81, 196.00, 246.94, 349.23],
+    'A7sus4': [220.00, 293.66, 329.63, 440.00],
+    'Dsus4': [146.83, 220.00, 349.23, 392.00],
+    'Gsus4': [196.00, 261.63, 293.66, 392.00],
+    'Fmaj7': [174.61, 220.00, 293.66, 349.23],
+    'Bb': [233.08, 293.66, 349.23, 466.16],
+    'F#': [185.00, 233.08, 293.66, 369.99],
+    'D6add9/F#': [185.00, 220.00, 293.66, 369.99]
+};
+
+const chordShapes = {
+    'G': { frets: [3,2,0,0,0,3], startFret: 1 },
+    'C': { frets: ['x',3,2,0,1,0], startFret: 1 },
+    'D': { frets: ['x','x',0,2,3,2], startFret: 1 },
+    'Em': { frets: [0,2,2,0,0,0], startFret: 1 },
+    'Am': { frets: ['x',0,2,2,1,0], startFret: 1 },
+    'A': { frets: ['x',0,2,2,2,0], startFret: 1 },
+    'E': { frets: [0,2,2,1,0,0], startFret: 1 },
+    'Bm': { frets: ['x',2,4,4,3,2], startFret: 1 },
+    'F#m': { frets: ['x',9,11,11,10,9], startFret: 9 },
+    'F': { frets: [1,3,3,2,1,1], startFret: 1 },
+    'Dsus4': { frets: ['x','x',0,2,3,3], startFret: 1 },
+    'Em7': { frets: [0,2,2,0,3,0], startFret: 1 },
+    'A7sus4': { frets: ['x',0,2,2,3,0], startFret: 1 },
+    'B7': { frets: [2,2,4,3,4,2], startFret: 1 },
+    'Bb': { frets: ['x',1,3,3,3,1], startFret: 1 },
+    'Gsus4': { frets: [3,3,0,0,1,3], startFret: 1 },
+    'D6add9/F#': { frets: [2,'x',0,2,3,2], startFret: 1 },
+    'Fmaj7': { frets: ['x',3,3,2,1,0], startFret: 1 },
+    'Dm': { frets: ['x','x',0,2,3,1], startFret: 1 },
+    'F#': { frets: ['x',2,4,4,3,2], startFret: 1 }
+};
+
+const patternDesc = {
+    "D DU UDU": "Down, Down-Up, Up-Down-Up",
+    "D DUD DUD": "Down, Down-Up-Down, Down-Up-Down",
+    "DDDD": "Four steady down strums per beat",
+    "DU DU DU": "Down-Up repeated evenly",
+    "Fingerstyle": "Play individual strings with fingers",
+    "Arpeggio": "Play notes one after another",
+    "Reggae": "Accent the off-beats",
+    "Country": "Lilting alternating rhythm",
+    "Pop Groove": "Punchy modern pop feel"
+};
+
+// State
+let currentSong = null, timer = null, activeChord = 0, currentStrum = 0;
+let audioCtx = null, tapTimes = [];
+
+// Sound functions
+function initAudio() {
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+
+function playClickSound() {
+    try {
+        initAudio();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.frequency.value = 800;
+        gain.gain.value = 0.12;
+        osc.start();
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
+        osc.stop(audioCtx.currentTime + 0.12);
+    } catch(e) {}
+}
+
+function playChordSound(chordName) {
+    try {
+        initAudio();
+        // Get base chord name (remove /bass notes)
+        const baseChord = chordName.split('/')[0];
+        const notes = chordNotes[baseChord] || chordNotes['G'];
+        
+        notes.forEach((freq, i) => {
+            // Simulate guitar string characteristics
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.type = 'triangle';
+            osc.frequency.value = freq;
+            
+            // Envelope for realistic guitar strum
+            gain.gain.setValueAtTime(0, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.18 - (i * 0.03), audioCtx.currentTime + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
+            
+            osc.start(audioCtx.currentTime + (i * 0.01));
+            osc.stop(audioCtx.currentTime + 1.5);
+        });
+    } catch(e) {}
+}
+
+// Copy Chords Function
+document.getElementById('copyChordsBtn').addEventListener('click', async () => {
+    if(!currentSong) return;
+    try {
+        const textToCopy = `${currentSong.title} - ${currentSong.artist}\nChords: ${currentSong.chords.join(' - ')}\nPattern: ${currentSong.pattern}\nBPM: ${currentSong.bpm}`;
+        await navigator.clipboard.writeText(textToCopy);
+        const notice = document.getElementById('copyNotice');
+        notice.classList.add('show');
+        setTimeout(() => notice.classList.remove('show'), 2000);
+    } catch (err) {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = `${currentSong.title} - ${currentSong.artist}\nChords: ${currentSong.chords.join(' - ')}\nPattern: ${currentSong.pattern}\nBPM: ${currentSong.bpm}`;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        const notice = document.getElementById('copyNotice');
+        notice.classList.add('show');
+        setTimeout(() => notice.classList.remove('show'), 2000);
+    }
+});
+
+// Theme
+document.getElementById('themeBtn').addEventListener('click', () => {
+    document.documentElement.classList.toggle('dark');
+    document.getElementById('themeBtn').textContent = document.documentElement.classList.contains('dark') ? '☀️' : '🌙';
+    localStorage.setItem('dark', document.documentElement.classList.contains('dark'));
+});
+if(localStorage.getItem('dark') === 'true' || (!localStorage.getItem('dark') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    document.documentElement.classList.add('dark');
+    document.getElementById('themeBtn').textContent = '☀️';
+}
+
+// Tabs
+document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.tab).classList.add('active');
+    });
+});
+
+// Render Table
+function renderSongs() {
+    try {
+        let list = [...songs];
+        const q = document.getElementById('searchInput').value.toLowerCase();
+        const tech = document.getElementById('techFilter').value;
+        const sort = document.getElementById('sortBy').value;
+
+        if(q) list = list.filter(s => 
+            s.title.toLowerCase().includes(q) || 
+            s.artist.toLowerCase().includes(q) || 
+            s.chords.some(c => c.toLowerCase().includes(q))
+        );
+        if(tech !== 'all') list = list.filter(s => s.type === tech);
+
+        switch(sort) {
+            case 'az': list.sort((a,b) => a.title.localeCompare(b.title)); break;
+            case 'za': list.sort((a,b) => b.title.localeCompare(a.title)); break;
+            case 'bpmLow': list.sort((a,b) => a.bpm - b.bpm); break;
+            case 'bpmHigh': list.sort((a,b) => b.bpm - a.bpm); break;
+            case 'chords': list.sort((a,b) => a.chords.length - b.chords.length); break;
+        }
+
+        document.getElementById('songTableBody').innerHTML = list.map((song, idx) => `
+            <tr>
+                <td>${song.title}</td>
+                <td>${song.artist}</td>
+                <td class="hide-md">${song.chords.map(c => `<span class="chord-tag" data-chord="${c}">${c}</span>`).join('')}</td>
+                <td><span class="style-tag style-${
+                    ['Strum','Fingerstyle','Arpeggio'].includes(song.type) ? song.type.toLowerCase() : 'other'
+                }">${song.type}</span></td>
+                <td style="text-align:center;">${song.bpm}</td>
+                <td style="display:flex;gap:0.3rem;">
+                    <button class="btn btn-primary go-practice" data-idx="${songs.indexOf(song)}">Practice</button>
+                    <button class="btn btn-gray btn-sm copy-row" data-idx="${songs.indexOf(song)}">📋</button>
+                </td>
+            </tr>
+        `).join('');
+
+        document.querySelectorAll('.go-practice').forEach(b => b.addEventListener('click', () => loadSong(+b.dataset.idx)));
+        document.querySelectorAll('.chord-tag').forEach(t => t.addEventListener('click', () => showChordLib(t.dataset.chord)));
+        // Copy button for table rows
+        document.querySelectorAll('.copy-row').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const idx = +e.target.dataset.idx;
+                const s = songs[idx];
+                try {
+                    await navigator.clipboard.writeText(`${s.title} - ${s.artist}\nChords: ${s.chords.join(' - ')}\nPattern: ${s.pattern}\nBPM: ${s.bpm}`);
+                    const orig = e.target.textContent;
+                    e.target.textContent = '✅';
+                    setTimeout(() => e.target.textContent = '📋', 1500);
+                } catch(err) {
+                    const textArea = document.createElement('textarea');
+                    textArea.value = `${s.title} - ${s.artist}\nChords: ${s.chords.join(' - ')}\nPattern: ${s.pattern}\nBPM: ${s.bpm}`;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    const orig = e.target.textContent;
+                    e.target.textContent = '✅';
+                    setTimeout(() => e.target.textContent = '📋', 1500);
+                }
+            })
+        })
+    } catch(e) {
+        document.getElementById('songTableBody').innerHTML = `<tr><td colspan="6" style="color:red;text-align:center;">Error loading content — refresh page</td></tr>`;
+    }
+}
+
+['searchInput','techFilter','sortBy'].forEach(id => document.getElementById(id).addEventListener('input change', renderSongs));
+
+// Chord Diagram
+function makeDiagram(name, size=130) {
+    const s = chordShapes[name];
+    if(!s) return `<div class="chord-card"><h4>${name}</h4><p style="font-size:0.8rem;color:var(--muted);">No diagram available</p></div>`;
+    
+    const w = size, h = size*1.4, strSpace = w/6, frSpace = (h-40)/5;
+    let svg = `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`;
+    
+    if(s.startFret === 1) svg += `<rect x="${strSpace/2}" y="20" width="${w-strSpace}" height="4" fill="currentColor"/>`;
+    else svg += `<text x="4" y="${20+frSpace/2}" font-size="11">${s.startFret}</text>`;
+
+    for(let i=1;i<=5;i++) svg += `<line x1="${strSpace/2}" y1="${20+i*frSpace}" x2="${w-strSpace/2}" y2="${20+i*frSpace}" stroke="currentColor" stroke-width="0.7"/>`;
+    for(let i=0;i<6;i++) svg += `<line x1="${strSpace*(i+1)}" y1="20" x2="${strSpace*(i+1)}" y2="${20+5*frSpace}" stroke="currentColor" stroke-width="1.2"/>`;
+
+    for(let st=0;st<6;st++) {
+        const f = s.frets[st], x = strSpace*(st+1);
+        if(f === 0) svg += `<circle cx="${x}" cy="10" r="4" stroke="#16a34a" stroke-width="1.5" fill="none"/>`;
+        else if(f === 'x') {
+            svg += `<line x1="${x-3}" y1="7" x2="${x+3}" y2="13" stroke="#ef4444" stroke-width="1.5"/>`;
+            svg += `<line x1="${x-3}" y1="13" x2="${x+3}" y2="7" stroke="#ef4444" stroke-width="1.5"/>`;
+        } else {
+            const y = 20 + (f - s.startFret + 0.5)*frSpace;
+            svg += `<circle cx="${x}" cy="${y}" r="5" fill="#16a34a"/>`;
+        }
+    }
+    svg += `</svg>`;
+    return `<div class="chord-card"><h4>${name}</h4>${svg}</div>`;
+}
+
+// Load Song
+function loadSong(idx) {
+    currentSong = songs[idx];
+    activeChord = 0;
+    currentStrum = 0;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelector('[data-tab="practice"]').classList.add('active');
+    document.getElementById('practice').classList.add('active');
+
+    document.getElementById('songName').textContent = currentSong.title;
+    document.getElementById('songArtist').textContent = currentSong.artist;
+    document.getElementById('bpmValue').textContent = currentSong.bpm;
+    document.getElementById('bpmSlider').value = currentSong.bpm;
+    document.getElementById('patternText').textContent = currentSong.pattern;
+    document.getElementById('patternDesc').textContent = patternDesc[currentSong.pattern] || '';
+
+    updateChordSequence();
+    document.querySelectorAll('.chord-item').forEach(el => el.addEventListener('click', () => {
+        activeChord = +el.dataset.idx;
+        currentStrum = 0;
+        updateChordDisplay();
+    }));
+    updateChordDisplay();
+}
+
+function updateChordSequence() {
+    if(!currentSong) return;
+    const perChord = parseInt(document.getElementById('strumsPerChord').value) || 4;
+    document.getElementById('chordSequence').innerHTML = currentSong.chords.map((c,i) => 
+        `<span class="chord-item ${i===activeChord?'active':''}" data-idx="${i}">
+            ${c}
+            <span class="strum-count">${currentStrum + 1}/${perChord}</span>
+        </span>`
+    ).join('');
+}
+
+function updateChordDisplay() {
+    updateChordSequence();
+    document.getElementById('diagramArea').innerHTML = makeDiagram(currentSong.chords[activeChord], 180);
+}
+
+function showChordLib(name) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelector('[data-tab="chords"]').classList.add('active');
+    document.getElementById('chords').classList.add('active');
+    document.getElementById('chordSearch').value = name;
+    renderChordLib();
+}
+
+// Metronome & Strum Logic
+document.getElementById('startBtn').addEventListener('click', () => {
+    if(!currentSong) return;
+    initAudio();
+    document.getElementById('startBtn').classList.add('hidden');
+    document.getElementById('stopBtn').classList.remove('hidden');
+    
+    const bpm = +document.getElementById('bpmValue').textContent;
+    const perChord = parseInt(document.getElementById('strumsPerChord').value) || 4;
+    const beatGap = 60000 / bpm;
+
+    timer = setInterval(() => {
+        // Play click if enabled
+        if(document.getElementById('clickCheck').checked) playClickSound();
+
+        // Play guitar sound only on first strum of new chord
+        if(currentStrum === 0 && document.getElementById('guitarCheck').checked) {
+            playChordSound(currentSong.chords[activeChord]);
+        }
+
+        // Advance strum counter
+        currentStrum++;
+        
+        // Change chord after set number of strums
+        if(currentStrum >= perChord) {
+            currentStrum = 0;
+            activeChord++;
+            if(activeChord >= currentSong.chords.length) {
+                activeChord = 0;
+                if(!document.getElementById('loopCheck').checked) stopMet();
+            }
+        }
+
+        updateChordDisplay();
+    }, beatGap);
+});
+
+function stopMet() {
+    clearInterval(timer); timer = null;
+    document.getElementById('startBtn').classList.remove('hidden');
+    document.getElementById('stopBtn').classList.add('hidden');
+}
+document.getElementById('stopBtn').addEventListener('click', stopMet);
+
+// Tempo
+function setBpm(v) {
+    const bpm = Math.max(40, Math.min(180, v));
+    document.getElementById('bpmValue').textContent = bpm;
+    document.getElementById('bpmSlider').value = bpm;
+    if(timer) { stopMet(); document.getElementById('startBtn').click(); }
+}
+document.getElementById('bpmSlider').addEventListener('input', e => setBpm(+e.target.value));
+document.getElementById('bpm-5').addEventListener('click', () => setBpm(+document.getElementById('bpmValue').textContent -5));
+document.getElementById('bpm-1').addEventListener('click', () => setBpm(+document.getElementById('bpmValue').textContent -1));
+document.getElementById('bpm+1').addEventListener('click', () => setBpm(+document.getElementById('bpmValue').textContent +1));
+document.getElementById('bpm+5').addEventListener('click', () => setBpm(+document.getElementById('bpmValue').textContent +5));
+
+// Update timing when strum count changes
+document.getElementById('strumsPerChord').addEventListener('change', () => {
+    if(currentSong) {
+        currentStrum = 0;
+        updateChordDisplay();
+        if(timer) { stopMet(); document.getElementById('startBtn').click(); }
+    }
+});
+
+// Tap Tempo
+document.getElementById('tapBtn').addEventListener('click', () =>
