@@ -576,10 +576,10 @@ document.getElementById('startBtn').addEventListener('click', () => {
     const beatGap = 60000 / bpm;
 
     timer = setInterval(() => {
-        if(document.getElementById('clickCheck').checked) playClickSound();
-        if(currentStrum === 0 && document.getElementById('guitarCheck').checked) {
-            playChordSound(currentSong.chords[activeChord]);
-        }
+    if(document.getElementById('clickCheck').checked) playClickSound();
+    if(document.getElementById('guitarCheck').checked) {
+        playChordSound(currentSong.chords[activeChord]);
+    }
 
         currentStrum++;
         if(currentStrum >= perChord) {
